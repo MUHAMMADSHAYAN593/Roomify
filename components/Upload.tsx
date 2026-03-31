@@ -2,6 +2,10 @@ import { CheckCircle, ImageIcon, UploadIcon } from 'lucide-react'
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import { useOutletContext } from 'react-router'
 import {
+    ACCEPTED_UPLOAD_EXTENSIONS,
+    ACCEPTED_UPLOAD_MIME_TYPES,
+    MAX_UPLOAD_FILE_SIZE_BYTES,
+    MAX_UPLOAD_FILE_SIZE_MB,
     PROGRESS_INCREMENT,
     PROGRESS_INTERVAL_MS,
     PROGRESS_STEP,
@@ -12,10 +16,32 @@ type UploadProps = {
     onComplete?: (base64Data: string) => void
 }
 
+const ACCEPTED_UPLOAD_EXTENSION_SET = new Set<string>(ACCEPTED_UPLOAD_EXTENSIONS)
+const ACCEPTED_UPLOAD_MIME_TYPE_SET = new Set<string>(ACCEPTED_UPLOAD_MIME_TYPES)
+const ACCEPTED_UPLOAD_INPUT = ACCEPTED_UPLOAD_EXTENSIONS.join(',')
+
+const validateFile = (file: File) => {
+    const extensionIndex = file.name.lastIndexOf('.')
+    const fileExtension = extensionIndex >= 0 ? file.name.slice(extensionIndex).toLowerCase() : ''
+    const hasValidExtension = ACCEPTED_UPLOAD_EXTENSION_SET.has(fileExtension)
+    const hasValidMimeType = file.type === '' || ACCEPTED_UPLOAD_MIME_TYPE_SET.has(file.type.toLowerCase())
+
+    if (!hasValidExtension || !hasValidMimeType) {
+        return 'Please upload a JPG or PNG floor plan.'
+    }
+
+    if (file.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+        return `Please upload a file up to ${MAX_UPLOAD_FILE_SIZE_MB}MB.`
+    }
+
+    return null
+}
+
 const Upload = ({ onComplete }: UploadProps) => {
     const [file, setFile] = useState<File | null>(null)
     const [isDragging, setIsDragging] = useState(false)
     const [progress, setProgress] = useState(0)
+    const [validationMessage, setValidationMessage] = useState<string | null>(null)
     const progressRef = useRef(0)
     const progressIntervalRef = useRef<number | null>(null)
     const redirectTimeoutRef = useRef<number | null>(null)
@@ -52,17 +78,30 @@ const Upload = ({ onComplete }: UploadProps) => {
         setProgress(0)
     }
 
-    const processFile = (files: FileList | null) => {
-        if (!isSignedIn || !files?.length) {
+    const showValidationMessage = (message: string) => {
+        clearPendingUpload()
+        setFile(null)
+        setIsDragging(false)
+        resetProgress()
+        setValidationMessage(message)
+    }
+
+    const processFile = (nextFile: File | null) => {
+        if (!isSignedIn || !nextFile) {
             return
         }
 
-        const nextFile = files[0]
+        const validationError = validateFile(nextFile)
+        if (validationError) {
+            showValidationMessage(validationError)
+            return
+        }
 
         clearPendingUpload()
         setFile(nextFile)
         setIsDragging(false)
         resetProgress()
+        setValidationMessage(null)
 
         const reader = new FileReader()
         fileReaderRef.current = reader
@@ -103,6 +142,7 @@ const Upload = ({ onComplete }: UploadProps) => {
             fileReaderRef.current = null
             setFile(null)
             resetProgress()
+            setValidationMessage('We could not read that file. Please try another JPG or PNG floor plan.')
         }
 
         reader.readAsDataURL(nextFile)
@@ -114,7 +154,20 @@ const Upload = ({ onComplete }: UploadProps) => {
             return
         }
 
-        processFile(event.target.files)
+        const nextFile = event.target.files?.[0] ?? null
+        if (!nextFile) {
+            event.target.value = ''
+            return
+        }
+
+        const validationError = validateFile(nextFile)
+        if (validationError) {
+            showValidationMessage(validationError)
+            event.target.value = ''
+            return
+        }
+
+        processFile(nextFile)
         event.target.value = ''
     }
 
@@ -157,7 +210,18 @@ const Upload = ({ onComplete }: UploadProps) => {
             return
         }
 
-        processFile(event.dataTransfer.files)
+        const nextFile = event.dataTransfer.files?.[0] ?? null
+        if (!nextFile) {
+            return
+        }
+
+        const validationError = validateFile(nextFile)
+        if (validationError) {
+            showValidationMessage(validationError)
+            return
+        }
+
+        processFile(nextFile)
     }
 
   return (
@@ -165,8 +229,9 @@ const Upload = ({ onComplete }: UploadProps) => {
       {
         !file ? (
             <div
-                className={`dropzone ${isDragging ? 'is-dragging' : ''}`}
+                className={`dropzone ${isDragging ? 'is-dragging' : ''} ${validationMessage ? 'has-error' : ''}`}
                 aria-disabled={!isSignedIn}
+                aria-invalid={Boolean(validationMessage)}
                 onDragEnter={handleDragEnter}
                 onDragLeave={handleDragLeave}
                 onDragOver={handleDragOver}
@@ -175,7 +240,7 @@ const Upload = ({ onComplete }: UploadProps) => {
                 <input 
                 type="file"
                 className='drop-input'
-                accept='.jpg,.jpeg,.png'
+                accept={ACCEPTED_UPLOAD_INPUT}
                 disabled={!isSignedIn}
                 onChange={handleFileChange}
                  />
@@ -193,7 +258,14 @@ const Upload = ({ onComplete }: UploadProps) => {
                             )
                         }
                     </p>
-                    <p className='help'>Maximum file size 50MB</p>
+                    <p className='help'>Maximum file size {MAX_UPLOAD_FILE_SIZE_MB}MB</p>
+                    {
+                        validationMessage ? (
+                            <p className='error' role='alert'>
+                                {validationMessage}
+                            </p>
+                        ) : null
+                    }
                  </div>
             </div>
         ) : (

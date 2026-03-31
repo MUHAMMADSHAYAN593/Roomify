@@ -14,6 +14,12 @@ export const REDIRECT_DELAY_MS = 600;
 export const PROGRESS_INTERVAL_MS = 100;
 export const PROGRESS_STEP = 5;
 
+// Upload Constants
+export const MAX_UPLOAD_FILE_SIZE_MB = 10;
+export const MAX_UPLOAD_FILE_SIZE_BYTES = MAX_UPLOAD_FILE_SIZE_MB * 1024 * 1024;
+export const ACCEPTED_UPLOAD_EXTENSIONS = [".jpg", ".jpeg", ".png"] as const;
+export const ACCEPTED_UPLOAD_MIME_TYPES = ["image/jpeg", "image/png"] as const;
+
 // UI Constants
 export const GRID_OVERLAY_SIZE = "60px 60px";
 export const GRID_COLOR = "#3B82F6";
