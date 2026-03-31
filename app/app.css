@@ -205,6 +205,14 @@
                 }
             }
 
+            &.has-error {
+                @apply border-red-300 bg-red-50;
+
+                .drop-icon {
+                    @apply bg-red-100 text-red-500;
+                }
+            }
+
             .drop-input {
                 @apply absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10;
             }
@@ -222,6 +230,10 @@
 
                 .help {
                     @apply text-zinc-500 text-xs;
+                }
+
+                .error {
+                    @apply mt-2 px-4 text-center text-xs font-medium text-red-600;
                 }
             }
 
