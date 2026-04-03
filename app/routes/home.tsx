@@ -22,7 +22,7 @@ export default function Home() {
 
   const handleUploadComplete = async (base64Data: string) => {
     const newId = Date.now().toString();
-    const name = `Redidence ${newId}`;
+    const name = `Residence ${newId}`;
 
     const newItem: DesignItem = {
       id: newId,
