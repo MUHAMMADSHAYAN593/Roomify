@@ -7,7 +7,3 @@ export async function loader() {
     },
   });
 }
-
-export default function ChromeDevtoolsRoute() {
-  return null;
-}
