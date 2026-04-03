@@ -130,9 +130,19 @@ export default function Home() {
 
             <div className="projects-grid">
               {projects.map(({ id, name, renderedImage, sourceImage, timestamp }) => (
-                <div key={id} className="project-card group" onClick={()=>{
-                  navigate(`/visualizer/${id}`)
-                }}>
+                <div
+                  key={id}
+                  className="project-card group"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/visualizer/${id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/visualizer/${id}`);
+                    }
+                  }}
+                >
                   <div className="preview">
                     <img src={renderedImage || sourceImage} alt={name || "Project preview"} />
 
