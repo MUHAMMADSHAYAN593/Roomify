@@ -1,29 +1,56 @@
 import Button from 'components/ui/Button'
 import { generate3DView } from 'lib/ai.action'
+import { createProject, getProjectById } from 'lib/puter.actions'
 import { Box, Download, RefreshCcw, Share2, X } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { useLocation, useNavigate, useOutletContext, useParams } from 'react-router'
 
 const visualizerId = () => {
+  const {id} = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { initialImage, initialRender, name } = location.state || {}
+  const locationState = (location.state as VisualizerLocationState | null) ?? null
+  const { userId } = useOutletContext<AuthContext>()
+  const initialSourceImage = locationState?.initialImage || null
+  const initialRenderedImage = locationState?.initialRender || null
 
   const hasInitialGenerated = useRef(false)
+  const [project, setProject] = useState<DesignItem | null>(null)
+  const [projectLoading, setProjectLoading] = useState(true)
   const [isprocessing, setIsprocessing] = useState(false)
-  const [currentImage, setCurrentImage] = useState<string | null>(initialRender || null)
+  const [currentImage, setCurrentImage] = useState<string | null>(null)
+  const displaySourceImage = initialSourceImage || project?.sourceImage || null
+
   const handleback = () => {
     navigate('/')
   }
 
-  const runGeneration = async () => {
-    if (!initialImage) return
+  const runGeneration = async (item: DesignItem) => {
+    if (!id || !item.sourceImage) return
     try {
       setIsprocessing(true)
-      const result = await generate3DView({ sourceImage: initialImage })
+      const result = await generate3DView({ sourceImage: item.sourceImage })
       if (result.renderedImage) {
         setCurrentImage(result.renderedImage)
         //update the project with the renderd image
+
+        const updatedItem = {
+          ...item,
+          renderedImage: result.renderedImage,
+          renderedPath: result.renderedPath,
+          timestamp: Date.now(),
+          ownerId: item.ownerId ??  userId ?? null,
+          isPublic: item.isPublic ?? false,
+        }
+
+        const saved = await createProject({ item: updatedItem, visibility: "private" })
+
+        if (saved) {
+          setProject(saved)
+          setCurrentImage(saved.renderedImage || result.renderedImage || null)
+        }
+
+
       }
     } catch (error) {
       console.error('Generation failed', error)
@@ -33,15 +60,75 @@ const visualizerId = () => {
   }
 
   useEffect(() => {
-    if (!initialImage || hasInitialGenerated.current) return
-    if (initialRender) {
-      setCurrentImage(initialRender)
-      hasInitialGenerated.current = true
+    let isMounted = true;
+
+    const loadProject = async () => {
+      if (!id) {
+        setProjectLoading(false);
+        return;
+      }
+
+      setProjectLoading(true);
+
+      const fetchedProject = await getProjectById({ id });
+
+      if (!isMounted) return;
+
+      if (fetchedProject) {
+        setProject({
+          ...fetchedProject,
+          sourceImage: initialSourceImage || fetchedProject.sourceImage,
+          renderedImage: fetchedProject.renderedImage || initialRenderedImage,
+          name: fetchedProject.name || locationState?.name || null,
+        });
+      } else if (initialSourceImage) {
+        setProject({
+          id,
+          name: locationState?.name || `Residence ${id}`,
+          sourceImage: initialSourceImage,
+          renderedImage: initialRenderedImage,
+          timestamp: Date.now(),
+          ownerId: userId ?? null,
+        });
+      } else {
+        setProject(null);
+      }
+
+      setCurrentImage(fetchedProject?.renderedImage || initialRenderedImage || null);
+      setProjectLoading(false);
+      hasInitialGenerated.current = false;
+    };
+
+    void loadProject();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, initialRenderedImage, initialSourceImage, locationState?.name, userId]);
+
+  useEffect(() => {
+    const generationSourceImage = initialSourceImage || project?.sourceImage || null;
+
+    if (
+      projectLoading ||
+      hasInitialGenerated.current ||
+      !project ||
+      !generationSourceImage
+    )
+      return;
+
+    if (project.renderedImage || initialRenderedImage) {
+      setCurrentImage(project.renderedImage || initialRenderedImage);
+      hasInitialGenerated.current = true;
+      return;
     }
 
-    hasInitialGenerated.current = true
-    runGeneration()
-  }, [initialImage, initialRender])
+    hasInitialGenerated.current = true;
+    void runGeneration({
+      ...project,
+      sourceImage: generationSourceImage,
+    });
+  }, [initialRenderedImage, initialSourceImage, project, projectLoading]);
 
   return (
     <div className='visualizer'>
@@ -61,7 +148,7 @@ const visualizerId = () => {
           <div className='panel-header'>
             <div className='panel-meta'>
               <p>Project</p>
-              <h2>{'Untitled Project'}</h2>
+              <h2>{project?.name || `Residence ${id}`}</h2>
               <p className='note'>Created By You</p>
             </div>
 
@@ -81,14 +168,14 @@ const visualizerId = () => {
             </div>
           </div>
 
-          <div className={`render-area ${isprocessing ? 'processing' : ''}`}>
+          <div className={`render-area ${isprocessing ? 'is-processing' : ''}`}>
             {currentImage ? (
-              <img src={currentImage} alt='Rendered View' className='render-image' />
+              <img src={currentImage} alt='Rendered View' className='render-img' />
             ): (
-              <div className='render-placholder'>
+              <div className='render-placeholder'>
                 {
-                  initialImage && (
-                    <img src={initialImage} alt="Original Image" className='render-fallback' />
+                  displaySourceImage && (
+                    <img src={displaySourceImage} alt="Original Image" className='render-fallback' />
                   )
                 }
               </div>
@@ -99,8 +186,8 @@ const visualizerId = () => {
                 <div className='render-overlay'>
                   <div className='rendering-card'>
                     <RefreshCcw className='spinner'/>
-                    <span className='tittle'>Rendering...</span>
-                    <span className='subtittle'>Generating Your 3D visualization...</span>
+                    <span className='title'>Rendering...</span>
+                    <span className='subtitle'>Generating Your 3D visualization...</span>
                   </div>
                 </div>
               )
