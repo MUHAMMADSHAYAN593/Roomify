@@ -3,10 +3,11 @@ import { generate3DView } from 'lib/ai.action'
 import { createProject, getProjectById } from 'lib/puter.actions'
 import { Box, Download, RefreshCcw, Share2, X } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
+import { ReactCompareSlider, ReactCompareSliderImage } from 'react-compare-slider'
 import { useLocation, useNavigate, useOutletContext, useParams } from 'react-router'
 
 const visualizerId = () => {
-  const {id} = useParams()
+  const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
   const locationState = (location.state as VisualizerLocationState | null) ?? null
@@ -25,6 +26,24 @@ const visualizerId = () => {
     navigate('/')
   }
 
+  const handleExport = () => {
+    if (!currentImage || typeof document === 'undefined') return
+
+    const downloadLink = document.createElement('a')
+    const downloadName = (project?.name || `Residence ${id}` || 'roomify-render')
+      .trim()
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+
+    downloadLink.href = currentImage
+    downloadLink.download = `${downloadName || 'roomify-render'}.png`
+    downloadLink.rel = 'noopener'
+
+    document.body.appendChild(downloadLink)
+    downloadLink.click()
+    document.body.removeChild(downloadLink)
+  }
+
   const runGeneration = async (item: DesignItem) => {
     if (!id || !item.sourceImage) return
     try {
@@ -39,7 +58,7 @@ const visualizerId = () => {
           renderedImage: result.renderedImage,
           renderedPath: result.renderedPath,
           timestamp: Date.now(),
-          ownerId: item.ownerId ??  userId ?? null,
+          ownerId: item.ownerId ?? userId ?? null,
           isPublic: item.isPublic ?? false,
         }
 
@@ -153,25 +172,25 @@ const visualizerId = () => {
             </div>
 
             <div className='panel-actions'>
-              <Button 
-              size='sm'
-              onClick={()=>{}}
-              disabled= {!currentImage}
-              className='export'>
-                <Download className='w-4 h-4 mr-2'/>Export
+              <Button
+                size='sm'
+                onClick={handleExport}
+                disabled={!currentImage}
+                className='export'>
+                <Download className='w-4 h-4 mr-2' />Export
               </Button>
-              <Button 
-              size='sm'
-              onClick={()=>{}}
-              className='share'
-              ><Share2 className='w-4 h-4 mr-2'/>Share</Button>
+              <Button
+                size='sm'
+                onClick={() => { }}
+                className='share'
+              ><Share2 className='w-4 h-4 mr-2' />Share</Button>
             </div>
           </div>
 
           <div className={`render-area ${isprocessing ? 'is-processing' : ''}`}>
             {currentImage ? (
               <img src={currentImage} alt='Rendered View' className='render-img' />
-            ): (
+            ) : (
               <div className='render-placeholder'>
                 {
                   displaySourceImage && (
@@ -185,10 +204,45 @@ const visualizerId = () => {
               isprocessing && (
                 <div className='render-overlay'>
                   <div className='rendering-card'>
-                    <RefreshCcw className='spinner'/>
+                    <RefreshCcw className='spinner' />
                     <span className='title'>Rendering...</span>
                     <span className='subtitle'>Generating Your 3D visualization...</span>
                   </div>
+                </div>
+              )
+            }
+          </div>
+        </div>
+
+        <div className='panel compare'>
+          <div className='panel-header'>
+            <div className='panel-meta'>
+              <p>Comparison</p>
+              <h3>Before and After</h3>
+            </div>
+            <div className='hint'>Drag to Compare</div>
+          </div>
+
+          <div className='compare-stage'>
+            {
+              displaySourceImage && currentImage ? (
+                <ReactCompareSlider
+                defaultValue={50}
+                style={{width: '100%' , height: '100%'}}
+                itemOne= {
+                  <ReactCompareSliderImage src={displaySourceImage} alt='before' className='compare-img'/>
+                }
+                itemTwo= {
+                  <ReactCompareSliderImage src={currentImage || project?.renderedImage || ''} alt='after' className='compare-img'/>
+                }
+                 />
+              ) : (
+                <div className='compare-fallback'>
+                  {
+                    displaySourceImage && (
+                      <img src={displaySourceImage} alt="Original Image" className='compare-img' />
+                    )
+                  }
                 </div>
               )
             }
