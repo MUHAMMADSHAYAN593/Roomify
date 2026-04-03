@@ -13,7 +13,10 @@ const visualizerId = () => {
           initialImage && (
             <div className='image-container'>
               <h2> Source Image</h2>
-              <img src={initialImage} alt="" />
+              <img
+                src={initialImage}
+                alt={name ? `Source image for ${name}` : "Source image"}
+              />
             </div>
           )
         }
