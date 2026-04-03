@@ -225,12 +225,12 @@ const visualizerId = () => {
 
           <div className='compare-stage'>
             {
-              project?.sourceImage && currentImage ? (
+              displaySourceImage && currentImage ? (
                 <ReactCompareSlider
                 defaultValue={50}
                 style={{width: '100%' , height: '100%'}}
                 itemOne= {
-                  <ReactCompareSliderImage src={project?.sourceImage} alt='before' className='compare-img'/>
+                  <ReactCompareSliderImage src={displaySourceImage} alt='before' className='compare-img'/>
                 }
                 itemTwo= {
                   <ReactCompareSliderImage src={currentImage || project?.renderedImage || ''} alt='after' className='compare-img'/>
@@ -239,8 +239,8 @@ const visualizerId = () => {
               ) : (
                 <div className='compare-fallback'>
                   {
-                    project?.sourceImage && (
-                      <img src={project.sourceImage} alt="Original Image" className='compare-img' />
+                    displaySourceImage && (
+                      <img src={displaySourceImage} alt="Original Image" className='compare-img' />
                     )
                   }
                 </div>
