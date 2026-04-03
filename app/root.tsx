@@ -43,41 +43,43 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-const DEFAULT_AUTH_STATE: Authstate = {
+const DEFAULT_AUTH_STATE: AuthState = {
   isSignedIn: false,
   userName: null,
-  userID: null,
-}
+  userId: null,
+};
 
 export default function App() {
-  const [authState, setAuthState] = useState<Authstate>(DEFAULT_AUTH_STATE)
+  const [authState, setAuthState] = useState<AuthState>(DEFAULT_AUTH_STATE);
 
   const refreshAuth = async () => {
     try {
-      const user = await getCurrentUser()
+      const user = await getCurrentUser();
       setAuthState({
         isSignedIn: !!user,
         userName: user?.username || null,
-        userID: user?.uuid || null,
-      })
+        userId: user?.uuid || null,
+      });
 
       return !!user;
     } catch (error) {
-      setAuthState(DEFAULT_AUTH_STATE)
+      setAuthState(DEFAULT_AUTH_STATE);
       return false;
     }
-  }
+  };
 
-  useEffect(() => { refreshAuth(); }, [])
+  useEffect(() => {
+    refreshAuth();
+  }, []);
   const signIn = async () => {
-    await puterSignIn()
+    await puterSignIn();
     await refreshAuth();
-  }
+  };
 
   const signOut = async () => {
-    await puterSignOut()
+    await puterSignOut();
     await refreshAuth();
-  }
+  };
   return (
     <main className="min-h-screen bg-background text-foreground relative z-10">
       <Outlet
